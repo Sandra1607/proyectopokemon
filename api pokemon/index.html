@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pokémon API</title>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .card {
+      margin: 10px;
+      transition: transform 0.3s;
+    }
+
+    .card:hover {
+      transform: scale(1.1);
+    }
+
+    .enlarged {
+      transform: scale(1.5);
+      z-index: 1;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    body {
+      position: relative;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="mt-4 mb-4">Lista de Pokémon</h1>
+    <input type="text" id="filterInput" class="form-control mb-4" placeholder="Filtrar por nombre">
+    <div id="pokemonContainer" class="row"></div>
+  </div>
+
+  <script>
+    let offset = 0;
+    const limit = 20;
+    let loading = false;
+
+    async function fetchPokemons() {
+      if (loading) return;
+      loading = true;
+
+      const response = await fetch(`https://pokeapi.co/api/v2/pokemon?offset=${offset}&limit=${limit}`);
+      const data = await response.json();
+      offset += limit;
+
+      loading = false;
+      return data.results;
+    }
+
+    async function displayPokemons() {
+      const pokemons = await fetchPokemons();
+      const container = document.getElementById('pokemonContainer');
+
+      pokemons.forEach(async (pokemon) => {
+        const response = await fetch(pokemon.url);
+        const data = await response.json();
+
+        const card = document.createElement('div');
+        card.classList.add('col-md-3', 'card-container');
+        card.innerHTML = `
+          <div class="card">
+            <img src="${data.sprites.front_default}" class="card-img-top" alt="${data.name}">
+            <div class="card-body">
+              <h5 class="card-title">${data.name}</h5>
+              <p class="card-text">Abilities: ${data.abilities.map(ability => ability.ability.name).join(', ')}</p>
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+
+        // Event listener para agrandar la carta al hacer clic en ella
+        card.addEventListener('click', (event) => {
+          event.stopPropagation();
+          if (!card.classList.contains('enlarged')) {
+            document.querySelectorAll('.card-container').forEach((c) => {
+              if (c !== card) {
+                c.style.display = 'none';
+              }
+            });
+          }
+          else {
+            document.querySelectorAll('.card-container').forEach((c) => {
+              c.style.display = 'block';
+            });
+          }
+          card.classList.toggle('enlarged');
+        });
+      });
+    }
+
+    window.addEventListener('scroll', () => {
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight) {
+        displayPokemons();
+      }
+    });
+
+    document.getElementById('filterInput').addEventListener('input', () => {
+      const filterValue = document.getElementById('filterInput').value.toLowerCase();
+      const cards = document.querySelectorAll('.card-container');
+
+      cards.forEach(card => {
+        const name = card.querySelector('.card-title').textContent.toLowerCase();
+        if (name.includes(filterValue)) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+
+    displayPokemons();
+  </script>
+</body>
+</html>
